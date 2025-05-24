@@ -99,12 +99,12 @@ const PageDisplay = ({ page, pageNumber }: { page: BookPageContent | null, pageN
             <div className="prose prose-base prose-stone dark:prose-invert max-w-none">
               <ReactMarkdown
                 components={{
-                  p: ({node: _node, ...props}) => <p className="mb-4 text-stone-700 dark:text-stone-300 leading-relaxed text-base" {...props} />,
-                  h1: ({node: _node, ...props}) => <h1 className="text-xl font-bold my-4 text-amber-700 dark:text-amber-400" {...props} />,
-                  h2: ({node: _node, ...props}) => <h2 className="text-lg font-semibold my-3 text-amber-600 dark:text-amber-300" {...props} />,
-                  h3: ({node: _node, ...props}) => <h3 className="text-md font-semibold my-2 text-amber-600 dark:text-amber-300" {...props} />,
-                  strong: ({node: _node, ...props}) => <strong className="font-bold text-stone-800 dark:text-stone-200" {...props} />,
-                  em: ({node: _node, ...props}) => <em className="italic text-stone-600 dark:text-stone-400" {...props} />,
+                  p: ({ ...props}) => <p className="mb-4 text-stone-700 dark:text-stone-300 leading-relaxed text-base" {...props} />,
+                  h1: ({ ...props}) => <h1 className="text-xl font-bold my-4 text-amber-700 dark:text-amber-400" {...props} />,
+                  h2: ({ ...props}) => <h2 className="text-lg font-semibold my-3 text-amber-600 dark:text-amber-300" {...props} />,
+                  h3: ({ ...props}) => <h3 className="text-md font-semibold my-2 text-amber-600 dark:text-amber-300" {...props} />,
+                  strong: ({ ...props}) => <strong className="font-bold text-stone-800 dark:text-stone-200" {...props} />,
+                  em: ({ ...props}) => <em className="italic text-stone-600 dark:text-stone-400" {...props} />,
                 }}
               >
                 {page.content}
@@ -132,12 +132,12 @@ const PageDisplay = ({ page, pageNumber }: { page: BookPageContent | null, pageN
                 <div className="prose prose-sm prose-stone dark:prose-invert max-w-none">
                   <ReactMarkdown
                     components={{
-                      p: ({node: _node, ...props}) => <p className="mb-3 text-stone-700 dark:text-stone-300 leading-relaxed text-sm" {...props} />,
-                      h1: ({node: _node, ...props}) => <h1 className="text-lg font-bold my-3 text-amber-700 dark:text-amber-400" {...props} />,
-                      h2: ({node: _node, ...props}) => <h2 className="text-md font-semibold my-2 text-amber-600 dark:text-amber-300" {...props} />,
-                      h3: ({node: _node, ...props}) => <h3 className="text-sm font-semibold my-2 text-amber-600 dark:text-amber-300" {...props} />,
-                      strong: ({node: _node, ...props}) => <strong className="font-bold text-stone-800 dark:text-stone-200" {...props} />,
-                      em: ({node: _node, ...props}) => <em className="italic text-stone-600 dark:text-stone-400" {...props} />,
+                      p: ({ ...props}) => <p className="mb-3 text-stone-700 dark:text-stone-300 leading-relaxed text-sm" {...props} />,
+                      h1: ({ ...props}) => <h1 className="text-lg font-bold my-3 text-amber-700 dark:text-amber-400" {...props} />,
+                      h2: ({ ...props}) => <h2 className="text-md font-semibold my-2 text-amber-600 dark:text-amber-300" {...props} />,
+                      h3: ({ ...props}) => <h3 className="text-sm font-semibold my-2 text-amber-600 dark:text-amber-300" {...props} />,
+                      strong: ({ ...props}) => <strong className="font-bold text-stone-800 dark:text-stone-200" {...props} />,
+                      em: ({ ...props}) => <em className="italic text-stone-600 dark:text-stone-400" {...props} />,
                     }}
                   >
                     {page.content}
@@ -205,7 +205,7 @@ export function DynamicBook({ title, story, images, className, storyParts, chapt
       });
     } else {
       // Fallback to original behavior: Create pages with each image showing the full story
-      images.forEach((image, _index) => {
+      images.forEach((image) => {
         pages.push({
           id: `mixed-${image.id}`,
           type: 'mixed',

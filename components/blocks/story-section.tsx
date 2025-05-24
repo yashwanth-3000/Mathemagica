@@ -65,7 +65,7 @@ export function StorySection() {
         >
           <DivideSquare className="h-8 w-8 text-amber-600 dark:text-amber-500 mx-auto mb-4 opacity-80" />
           <p className="text-xl md:text-2xl italic text-stone-600 dark:text-stone-400 font-serif leading-snug">
-            "{storyContent.quote.text}"
+            &quot;{storyContent.quote.text}&quot;
           </p>
           <p className="text-sm text-stone-500 dark:text-stone-500 mt-3 tracking-wide">
             &mdash; {storyContent.quote.author}

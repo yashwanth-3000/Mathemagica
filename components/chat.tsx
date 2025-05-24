@@ -1,6 +1,5 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import { useChat } from 'ai/react';
 import { Message } from 'ai';
 

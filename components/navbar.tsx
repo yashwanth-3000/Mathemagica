@@ -23,9 +23,9 @@ export function Navbar() {
   let navLinkStyles = "";
   let navLinkHoverStyles = "";
   let themeButtonStyles = "";
-  let themeButtonIconStyles = "h-4 w-4";
+  const themeButtonIconStyles = "h-4 w-4";
   let mobileMenuButtonStyles = "";
-  let mobileMenuIconStyles = "h-5 w-5";
+  const mobileMenuIconStyles = "h-5 w-5";
 
   if (pathname === '/' || pathname === '/library') {
     navStyles = "bg-amber-500 border-b-4 border-black shadow-xl";

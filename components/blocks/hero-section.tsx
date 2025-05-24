@@ -27,7 +27,6 @@ interface HeroProps {
     alt: string;
   };
   promptPlaceholder?: string;
-  onPromptSubmit?: (prompt: string) => void;
 }
 
 export function HeroSection({
@@ -36,7 +35,6 @@ export function HeroSection({
   description,
   image,
   promptPlaceholder = "Tell us what you want to explore...",
-  onPromptSubmit
 }: HeroProps) {
   const { resolvedTheme } = useTheme();
   const imageSrc = image && (resolvedTheme === "light" ? image.light : image.dark);
