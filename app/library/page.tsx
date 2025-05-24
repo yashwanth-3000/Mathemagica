@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { getAllBooks } from "../../lib/database";
 import { Book } from "../../lib/supabase";
-import { BookOpen, Calendar, Image as ImageIcon, Trash2, Eye, SparklesIcon, Zap, Search, Heart } from "lucide-react";
+import { BookOpen, Calendar, Image as ImageIcon, Eye, SparklesIcon, Zap } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Glow } from "@/components/ui/glow";
@@ -21,7 +21,6 @@ const statusColors = {
 };
 
 export default function Library() {
-  const router = useRouter();
   const [books, setBooks] = useState<Book[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -40,8 +39,9 @@ export default function Library() {
       }
       
       setBooks(data || []);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -66,7 +66,7 @@ export default function Library() {
     if (Array.isArray(book.images) && book.images.length > 0) {
       // Try to find any image with a valid URL
       for (const img of book.images) {
-        const imageData = img as any;
+        const imageData = img as Record<string, unknown>;
         
         // Check for url property (main format used in database)
         if (imageData.url && typeof imageData.url === 'string') {
@@ -74,13 +74,13 @@ export default function Library() {
         }
         
         // Fallback checks for other possible formats
-        if (imageData.base64) {
+        if (imageData.base64 && typeof imageData.base64 === 'string') {
           return `data:image/png;base64,${imageData.base64}`;
         }
-        if (imageData.imageBase64) {
+        if (imageData.imageBase64 && typeof imageData.imageBase64 === 'string') {
           return `data:image/png;base64,${imageData.imageBase64}`;
         }
-        if (imageData.src && imageData.src.startsWith('data:image/')) {
+        if (imageData.src && typeof imageData.src === 'string' && imageData.src.startsWith('data:image/')) {
           return imageData.src;
         }
       }
@@ -274,10 +274,12 @@ export default function Library() {
                   {/* Cover Image or Placeholder */}
                   {getBookThumbnail(book) ? (
                     <div className="w-full h-48 relative overflow-hidden border-b-4 border-black">
-                      <img 
+                      <Image 
                         src={getBookThumbnail(book)!} 
                         alt={`Cover for ${book.title}`} 
                         className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                        width={192}
+                        height={256}
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                     </div>

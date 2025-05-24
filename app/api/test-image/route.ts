@@ -82,8 +82,7 @@ export async function POST(req: NextRequest) {
         
         // Save the image to a file
         const image_bytes = Buffer.from(image_base64, "base64");
-        // @ts-ignore - Node.js fs.writeFileSync accepts Buffer despite TypeScript definitions
-        fs.writeFileSync(filePath, image_bytes);
+        fs.writeFileSync(filePath, new Uint8Array(image_bytes));
         
         savedFilePath = `/generated-images/${fileName}`;
         console.log(`[OpenAI Image API] Image saved to: ${filePath}`);
@@ -100,13 +99,13 @@ export async function POST(req: NextRequest) {
       prompt: prompt 
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[OpenAI Image API] Error generating image:", error);
     let errorMessage = "An unknown error occurred while generating the image.";
     let statusCode = 500;
 
     // Handle OpenAI-specific errors
-    if (error && typeof error === 'object') {
+    if (error && typeof error === 'object' && error !== null) {
       if ('status' in error && typeof error.status === 'number') {
         statusCode = error.status;
       }
@@ -114,10 +113,11 @@ export async function POST(req: NextRequest) {
         errorMessage = error.message;
       } else if ('error' in error && typeof error.error === 'object' && error.error !== null && 'message' in error.error && typeof error.error.message === 'string') {
         errorMessage = error.error.message;
-      } else if (error.response?.data) {
-        const errorData = error.response.data;
-        errorMessage = errorData.error?.message || errorData.error || errorData.message || errorMessage;
-        if (error.response.status) statusCode = error.response.status;
+      } else if ('response' in error && error.response && typeof error.response === 'object' && 'data' in error.response) {
+        const errorData = error.response.data as Record<string, unknown>;
+        const errorObj = errorData.error as Record<string, unknown> | undefined;
+        errorMessage = (errorObj?.message as string) || (errorData.error as string) || (errorData.message as string) || errorMessage;
+        if ('status' in error.response && typeof error.response.status === 'number') statusCode = error.response.status;
       }
     }
     

@@ -1,5 +1,4 @@
 import { HeroSection } from "@/components/blocks/hero-section";
-import { BrainCircuit } from "lucide-react";
 
 export default function Home() {
   return (

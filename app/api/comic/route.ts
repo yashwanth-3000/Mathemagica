@@ -170,7 +170,7 @@ export async function POST(req: NextRequest) {
     const encoder = new TextEncoder();
     const stream = new ReadableStream({
       async start(controller) {
-        const sendEvent = (data: any) => {
+        const sendEvent = (data: Record<string, unknown>) => {
           controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
         };
 
@@ -196,10 +196,18 @@ export async function POST(req: NextRequest) {
           }
 
           // Parse the JSON response
-          let parsedStoryData: any;
+          let parsedStoryData: {
+            overall_chapter_name: string;
+            story_summary: string;
+            parts: Array<{
+              part_number: number;
+              chapter_title: string;
+              story_content: string;
+            }>;
+          };
           try {
             parsedStoryData = JSON.parse(storyContent);
-          } catch (parseError) {
+          } catch {
             throw new Error("Failed to parse story JSON response: " + storyContent.substring(0, 200));
           }
 
@@ -254,7 +262,9 @@ export async function POST(req: NextRequest) {
           }
 
           sendEvent({ type: "status", message: "Parsing image prompts..." });
-          let parsedImagePrompts;
+          let parsedImagePrompts: {
+            image_prompts: Array<Record<string, unknown>>;
+          };
           try {
             parsedImagePrompts = JSON.parse(rawImagePromptJson);
           } catch (e) {
@@ -284,7 +294,7 @@ export async function POST(req: NextRequest) {
             message: "All processing complete."
           });
 
-        } catch (error: any) {
+        } catch (error: unknown) {
           console.error("[API Route Error] Error during comic generation stream:", error);
           let errorMessage = "An unknown error occurred during generation.";
           if (error instanceof Error) {
@@ -309,9 +319,10 @@ export async function POST(req: NextRequest) {
       },
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[API Route Error - Outer] Error in POST /api/comic:", error);
-    return new Response(JSON.stringify({ error: error.message || "An unexpected error occurred on the server." }), {
+    const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred on the server.";
+    return new Response(JSON.stringify({ error: errorMessage }), {
       status: 500,
       headers: { "Content-Type": "application/json" },
     });

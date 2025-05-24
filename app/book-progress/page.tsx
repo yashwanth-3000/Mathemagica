@@ -1,7 +1,8 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback, Suspense } from "react";
+import Image from "next/image";
 import ReactMarkdown from 'react-markdown';
 import { CheckCircle, Loader2, MessageSquareText, Image as ImageIcon, Sparkles, AlertTriangleIcon, ArrowRight, Palette, Database, BookOpen, Eye } from 'lucide-react'; // Icons
 import { saveCompleteBook } from '../../lib/database';
@@ -32,7 +33,7 @@ interface GeneratedImage {
   prompt: string;
 }
 
-export default function BookProgress() {
+function BookProgressContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const userPrompt = searchParams.get("prompt");
@@ -90,7 +91,7 @@ export default function BookProgress() {
   }, [currentStoryChunks]); // Re-evaluate on new story chunks
 
   // Image generation function
-  const generateImages = async () => {
+  const generateImages = useCallback(async () => {
     if (finalImagePrompts.length === 0) return;
     
     setImageGenInProgress(true);
@@ -120,7 +121,7 @@ export default function BookProgress() {
 
         // Handle different types of errors
         if (!response.ok) {
-          let errorMessage = data.error || `Failed to generate image ${i + 1}`;
+          const errorMessage = data.error || `Failed to generate image ${i + 1}`;
           
           // Check for 502 Bad Gateway or OpenAI service issues
           if (response.status === 502 || errorMessage.includes("502") || errorMessage.includes("Bad gateway")) {
@@ -164,12 +165,13 @@ export default function BookProgress() {
         } else {
           throw new Error(`No image data returned for image ${i + 1}`);
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
         console.error(`Error generating image ${i + 1}:`, error);
         
         // For any error, create a placeholder and continue
-        console.warn(`Creating placeholder for image ${i + 1} due to error: ${error.message}`);
-        setImageGenStatus(`⚠️ Creating placeholder for image ${i + 1} - ${error.message.slice(0, 50)}...`);
+        console.warn(`Creating placeholder for image ${i + 1} due to error: ${errorMessage}`);
+        setImageGenStatus(`⚠️ Creating placeholder for image ${i + 1} - ${errorMessage.slice(0, 50)}...`);
         
         try {
           const placeholderImage: GeneratedImage = {
@@ -196,7 +198,7 @@ export default function BookProgress() {
     setImageGenInProgress(false);
     setImageGenComplete(true);
     setImageGenStatus(`🎉 Image generation complete! Generated ${generatedImages.length} images. Redirecting to your comic book...`);
-  };
+  }, [finalImagePrompts, generatedImages.length]);
 
   // Function to create a placeholder image as base64
   const createPlaceholderImage = async (title: string, imageNumber: number): Promise<string> => {
@@ -272,7 +274,7 @@ export default function BookProgress() {
   };
 
   // Function to save the book to Supabase
-  const saveBookToDatabase = async () => {
+  const saveBookToDatabase = useCallback(async () => {
     if (!finalStory || generatedImages.length === 0) {
       setSaveError("No story or images to save");
       return;
@@ -299,20 +301,21 @@ export default function BookProgress() {
 
       setSavedBookId(bookId);
       setSaveComplete(true);
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to save book to database";
       console.error("Error saving book:", error);
-      setSaveError(error.message || "Failed to save book to database");
+      setSaveError(errorMessage);
     } finally {
       setSaveInProgress(false);
     }
-  };
+  }, [finalStory, generatedImages, chapterName, userPrompt]);
 
   // Trigger image generation when image prompts are complete
   useEffect(() => {
     if (imagePromptGenComplete && finalImagePrompts.length > 0 && !imageGenInProgress && !imageGenComplete) {
       generateImages();
     }
-  }, [imagePromptGenComplete, finalImagePrompts.length, imageGenInProgress, imageGenComplete]);
+  }, [imagePromptGenComplete, finalImagePrompts.length, imageGenInProgress, imageGenComplete, generateImages]);
 
   // Auto-save when generation is complete
   useEffect(() => {
@@ -324,7 +327,7 @@ export default function BookProgress() {
       
       return () => clearTimeout(saveTimer);
     }
-  }, [imageGenComplete, finalStory, generatedImages.length, saveInProgress, saveComplete]);
+  }, [imageGenComplete, finalStory, generatedImages.length, saveInProgress, saveComplete, saveBookToDatabase]);
 
   useEffect(() => {
     if (!userPrompt) {
@@ -387,9 +390,8 @@ export default function BookProgress() {
 
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
-        let accumulatedStory = "";
+        const accumulatedStory = "";
 
-        // eslint-disable-next-line no-constant-condition
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
@@ -495,7 +497,7 @@ export default function BookProgress() {
 
     processBookStream();
 
-  }, [userPrompt]); // Removed router dependency to prevent duplicate calls
+  }, [userPrompt, imagePromptGenComplete, imagePromptGenInProgress, router, storyGenComplete, storyGenInProgress, storyParts]);
 
   // Update isComplete to include save completion and redirect
   useEffect(() => {
@@ -511,17 +513,17 @@ export default function BookProgress() {
 
   const renderMarkdown = (content: string) => {
     return <ReactMarkdown components={{
-        p: ({node, ...props}) => <p className="mb-2 text-gray-300" {...props} />,
-        h1: ({node, ...props}) => <h1 className="text-2xl font-bold my-3 text-yellow-400" {...props} />,
-        h2: ({node, ...props}) => <h2 className="text-xl font-semibold my-2 text-yellow-500" {...props} />,
-        h3: ({node, ...props}) => <h3 className="text-lg font-semibold my-1 text-amber-500" {...props} />,
-        ul: ({node, ...props}) => <ul className="list-disc pl-5 mb-2 text-gray-300" {...props} />,
-        ol: ({node, ...props}) => <ol className="list-decimal pl-5 mb-2 text-gray-300" {...props} />,
-        li: ({node, ...props}) => <li className="mb-1" {...props} />,
-        strong: ({node, ...props}) => <strong className="font-bold text-yellow-300" {...props} />,
-        em: ({node, ...props}) => <em className="italic text-amber-300" {...props} />,
-        code: ({node, ...props}) => <code className="bg-slate-800 px-1 rounded text-sm text-pink-400" {...props} />,
-        pre: ({node, ...props}) => <pre className="bg-slate-800 p-2 rounded overflow-x-auto text-sm" {...props} />
+        p: ({...props}) => <p className="mb-2 text-gray-300" {...props} />,
+        h1: ({...props}) => <h1 className="text-2xl font-bold my-3 text-yellow-400" {...props} />,
+        h2: ({...props}) => <h2 className="text-xl font-semibold my-2 text-yellow-500" {...props} />,
+        h3: ({...props}) => <h3 className="text-lg font-semibold my-1 text-amber-500" {...props} />,
+        ul: ({...props}) => <ul className="list-disc pl-5 mb-2 text-gray-300" {...props} />,
+        ol: ({...props}) => <ol className="list-decimal pl-5 mb-2 text-gray-300" {...props} />,
+        li: ({...props}) => <li className="mb-1" {...props} />,
+        strong: ({...props}) => <strong className="font-bold text-yellow-300" {...props} />,
+        em: ({...props}) => <em className="italic text-amber-300" {...props} />,
+        code: ({...props}) => <code className="bg-slate-800 px-1 rounded text-sm text-pink-400" {...props} />,
+        pre: ({...props}) => <pre className="bg-slate-800 p-2 rounded overflow-x-auto text-sm" {...props} />
     }}>{content}</ReactMarkdown>;
   };
 
@@ -813,10 +815,12 @@ export default function BookProgress() {
                         {generatedImages.map((image, index) => (
                             <div key={`gen-image-${image.id}-${index}`} className="p-3 bg-slate-800/70 rounded-lg border-2 border-emerald-500/40 hover:border-emerald-400/60 transition-colors shadow-lg hover:shadow-emerald-500/20">
                                 <div className="relative aspect-square mb-2 rounded overflow-hidden bg-slate-700">
-                                    <img 
+                                    <Image 
                                         src={`data:image/png;base64,${image.imageBase64}`}
                                         alt={image.title}
                                         className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                                        width={256}
+                                        height={256}
                                     />
                                 </div>
                                 <h4 className="text-sm font-black text-emerald-400 font-sans">Image {image.id}: {image.title}</h4>
@@ -1000,5 +1004,18 @@ export default function BookProgress() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function BookProgress() {
+  return (
+    <Suspense fallback={
+      <div className="flex flex-col items-center justify-center min-h-screen bg-black p-4" style={{ backgroundImage: "url('/comic_background.png')", backgroundSize: "cover", backgroundPosition: "center", backgroundAttachment: "fixed" }}>
+        <Loader2 className="w-12 h-12 text-amber-500 animate-spin mb-4"/>
+        <p className="text-lg text-slate-300 bg-black/50 px-4 py-2 rounded-md font-bold">Loading your cosmic request...</p>
+      </div>
+    }>
+      <BookProgressContent />
+    </Suspense>
   );
 } 

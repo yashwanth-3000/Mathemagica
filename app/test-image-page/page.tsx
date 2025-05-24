@@ -48,9 +48,10 @@ export default function TestImagePage() {
       } else {
         throw new Error("No image data returned from API.");
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to generate image. Check console for details.';
       console.error("Error calling OpenAI image API:", err);
-      setError(err.message || "Failed to generate image. Check console for details.");
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -63,7 +64,7 @@ export default function TestImagePage() {
           <h1 className="text-4xl md:text-5xl font-black bg-clip-text text-transparent bg-gradient-to-r from-sky-400 via-cyan-400 to-teal-500 py-2">
             OpenAI Image Test
           </h1>
-          <p className="text-slate-400 mt-2">Test OpenAI's image models (gpt-image-1 / DALL-E 3) with automatic format handling.</p>
+          <p className="text-slate-400 mt-2">Test OpenAI&apos;s image models (gpt-image-1 / DALL-E 3) with automatic format handling.</p>
         </header>
 
         <form onSubmit={handleSubmit} className="space-y-6 mb-8">
