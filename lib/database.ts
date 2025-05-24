@@ -1,7 +1,7 @@
 import { supabase, Book, BookInsert, BookUpdate, BookImage, BookImageInsert } from './supabase'
 
 // Book operations
-export const createBook = async (bookData: BookInsert): Promise<{ data: Book | null; error: any }> => {
+export const createBook = async (bookData: BookInsert): Promise<{ data: Book | null; error: Error | null }> => {
   const { data, error } = await supabase
     .from('books')
     .insert(bookData)
@@ -11,7 +11,7 @@ export const createBook = async (bookData: BookInsert): Promise<{ data: Book | n
   return { data, error }
 }
 
-export const updateBook = async (id: string, updates: BookUpdate): Promise<{ data: Book | null; error: any }> => {
+export const updateBook = async (id: string, updates: BookUpdate): Promise<{ data: Book | null; error: Error | null }> => {
   const { data, error } = await supabase
     .from('books')
     .update(updates)
@@ -22,7 +22,7 @@ export const updateBook = async (id: string, updates: BookUpdate): Promise<{ dat
   return { data, error }
 }
 
-export const getBook = async (id: string): Promise<{ data: Book | null; error: any }> => {
+export const getBook = async (id: string): Promise<{ data: Book | null; error: Error | null }> => {
   const { data, error } = await supabase
     .from('books')
     .select('*')
@@ -32,7 +32,7 @@ export const getBook = async (id: string): Promise<{ data: Book | null; error: a
   return { data, error }
 }
 
-export const getAllBooks = async (): Promise<{ data: Book[] | null; error: any }> => {
+export const getAllBooks = async (): Promise<{ data: Book[] | null; error: Error | null }> => {
   const { data, error } = await supabase
     .from('books')
     .select('*')
@@ -41,7 +41,7 @@ export const getAllBooks = async (): Promise<{ data: Book[] | null; error: any }
   return { data, error }
 }
 
-export const deleteBook = async (id: string): Promise<{ error: any }> => {
+export const deleteBook = async (id: string): Promise<{ error: Error | null }> => {
   const { error } = await supabase
     .from('books')
     .delete()
@@ -51,7 +51,7 @@ export const deleteBook = async (id: string): Promise<{ error: any }> => {
 }
 
 // Book image operations
-export const addBookImage = async (imageData: BookImageInsert): Promise<{ data: BookImage | null; error: any }> => {
+export const addBookImage = async (imageData: BookImageInsert): Promise<{ data: BookImage | null; error: Error | null }> => {
   const { data, error } = await supabase
     .from('book_images')
     .insert(imageData)
@@ -61,7 +61,7 @@ export const addBookImage = async (imageData: BookImageInsert): Promise<{ data: 
   return { data, error }
 }
 
-export const getBookImages = async (bookId: string): Promise<{ data: BookImage[] | null; error: any }> => {
+export const getBookImages = async (bookId: string): Promise<{ data: BookImage[] | null; error: Error | null }> => {
   const { data, error } = await supabase
     .from('book_images')
     .select('*')
@@ -71,7 +71,7 @@ export const getBookImages = async (bookId: string): Promise<{ data: BookImage[]
   return { data, error }
 }
 
-export const deleteBookImage = async (id: string): Promise<{ error: any }> => {
+export const deleteBookImage = async (id: string): Promise<{ error: Error | null }> => {
   const { error } = await supabase
     .from('book_images')
     .delete()
@@ -85,7 +85,7 @@ export const uploadBase64ImageToStorage = async (
   base64Data: string,
   fileName: string,
   bookId: string
-): Promise<{ url: string | null; error: any }> => {
+): Promise<{ url: string | null; error: Error | null }> => {
   try {
     console.log(`[Storage] Uploading ${fileName} for book ${bookId}`)
     
@@ -106,7 +106,7 @@ export const uploadBase64ImageToStorage = async (
 
     if (error) {
       console.error(`[Storage] Failed to upload ${fileName}:`, error)
-      return { url: null, error }
+      return { url: null, error: error as Error }
     }
 
     // Get the public URL
@@ -118,7 +118,7 @@ export const uploadBase64ImageToStorage = async (
     return { url: urlData.publicUrl, error: null }
   } catch (error) {
     console.error(`[Storage] Exception uploading ${fileName}:`, error)
-    return { url: null, error }
+    return { url: null, error: error as Error }
   }
 }
 
@@ -129,7 +129,7 @@ export const uploadImageToStorage = async (
   file: File,
   fileName: string,
   bookId?: string
-): Promise<{ url: string | null; error: any }> => {
+): Promise<{ url: string | null; error: Error | null }> => {
   try {
     const filePath = bookId ? `${bookId}/${fileName}` : fileName
     
@@ -141,7 +141,7 @@ export const uploadImageToStorage = async (
       })
 
     if (error) {
-      return { url: null, error }
+      return { url: null, error: error as Error }
     }
 
     // Get the public URL
@@ -151,7 +151,7 @@ export const uploadImageToStorage = async (
 
     return { url: urlData.publicUrl, error: null }
   } catch (error) {
-    return { url: null, error }
+    return { url: null, error: error as Error }
   }
 }
 
@@ -169,7 +169,7 @@ export const saveCompleteBook = async (
   }>,
   bookProgress: number = 100,
   status: 'draft' | 'in_progress' | 'completed' | 'published' = 'completed'
-): Promise<{ bookId: string | null; error: any }> => {
+): Promise<{ bookId: string | null; error: Error | null }> => {
   try {
     // First, create the book (without storing base64 images in JSONB)
     const bookData: BookInsert = {
@@ -194,7 +194,7 @@ export const saveCompleteBook = async (
     console.log(`Created book with ID: ${book.id}, now uploading ${generatedImages.length} images to storage...`)
 
     // Upload images to Supabase storage and save references
-    const uploadPromises = generatedImages.map(async (img, index) => {
+    const uploadPromises = generatedImages.map(async (img, _index) => {
       try {
         const fileName = `image-${img.id}-${img.title.replace(/[^a-zA-Z0-9]/g, '-')}.png`
         
@@ -270,12 +270,12 @@ export const saveCompleteBook = async (
     }
 
     // Update book with storage URLs in the images JSONB field
-    const imageUrls = uploadResults.map((result, index) => ({
-      id: generatedImages[index].id,
-      title: generatedImages[index].title,
+    const imageUrls = uploadResults.map((result, idx) => ({
+      id: generatedImages[idx]!.id,
+      title: generatedImages[idx]!.title,
       url: result.storageUrl,
-      prompt: generatedImages[index].prompt,
-      order: generatedImages[index].id
+      prompt: generatedImages[idx]!.prompt,
+      order: generatedImages[idx]!.id,
     }))
 
     const { error: updateError } = await updateBook(book.id, {
@@ -290,6 +290,6 @@ export const saveCompleteBook = async (
     return { bookId: book.id, error: null }
   } catch (error) {
     console.error('Error saving complete book:', error)
-    return { bookId: null, error }
+    return { bookId: null, error: error as Error }
   }
 } 

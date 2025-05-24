@@ -312,7 +312,7 @@ export function DynamicBook({ title, story, images, className, storyParts, chapt
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [currentPageIndex, isFlipping]);
+  }, [currentPageIndex, isFlipping, handleNextPage, handlePrevPage]);
 
   // Determine which pages to show
   let displayLeftPageData: BookPageContent | null = null;
