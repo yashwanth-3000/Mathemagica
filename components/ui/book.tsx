@@ -11,7 +11,6 @@ import {
   Ruler, 
   Shapes, 
   Sigma, 
-  Clock, 
   Compass, 
   Image as ImageIcon, 
   ArrowLeftCircle,
@@ -263,8 +262,23 @@ export function Book() {
     if (!isFlipping) {
       flipperControls.set({ rotateY: 0, rotateX: 0, translateZ: 0, zIndex: 5 });
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isFlipping, currentPageIndex, flipperControls]);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'ArrowRight') {
+        handleNextPage();
+      } else if (event.key === 'ArrowLeft') {
+        handlePrevPage();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [handleNextPage, handlePrevPage]);
 
   return (
     <div className="relative w-full max-w-7xl mx-auto py-8">

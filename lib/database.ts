@@ -194,7 +194,7 @@ export const saveCompleteBook = async (
     console.log(`Created book with ID: ${book.id}, now uploading ${generatedImages.length} images to storage...`)
 
     // Upload images to Supabase storage and save references
-    const uploadPromises = generatedImages.map(async (img, _index) => {
+    const uploadPromises = generatedImages.map(async (img) => {
       try {
         const fileName = `image-${img.id}-${img.title.replace(/[^a-zA-Z0-9]/g, '-')}.png`
         
