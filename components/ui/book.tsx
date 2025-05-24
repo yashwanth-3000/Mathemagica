@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence, useAnimation } from "framer-motion";
 import { 
   Book as BookIcon, 
@@ -181,7 +181,7 @@ export function Book() {
     }
   };
 
-  const handleNextPage = async () => {
+  const handleNextPage = useCallback(async () => {
     if (currentPageIndex + 2 < totalPages && !isFlipping) {
       playPageTurnSound();
       setFlipDirection('forward');
@@ -196,9 +196,9 @@ export function Book() {
       setCurrentPageIndex(prev => prev + 2);
       setIsFlipping(false);
     }
-  };
+  }, [currentPageIndex, totalPages, isFlipping, flipperControls, flippingPageTransition]);
 
-  const handlePrevPage = async () => {
+  const handlePrevPage = useCallback(async () => {
     if (currentPageIndex > 0 && !isFlipping) {
       playPageTurnSound();
       setFlipDirection('backward');
@@ -216,7 +216,7 @@ export function Book() {
         setIsFlipping(false);
       });
     }
-  };
+  }, [currentPageIndex, isFlipping, flipperControls, flippingPageTransition]);
   
   let displayLeftPageData: PageContent | null = null;
   let displayLeftPageNumber: number = 0;

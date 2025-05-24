@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { getBook, getBookImages } from "../../../lib/database";
 import { Book, BookImage } from "../../../lib/supabase";
@@ -17,13 +17,7 @@ export default function BookView() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (bookId) {
-      loadBook();
-    }
-  }, [bookId]);
-
-  const loadBook = async () => {
+  const loadBook = useCallback(async () => {
     try {
       setLoading(true);
       
@@ -41,12 +35,19 @@ export default function BookView() {
       
       setBook(bookData);
       setBookImages(imagesData || []);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
-  };
+  }, [bookId]);
+
+  useEffect(() => {
+    if (bookId) {
+      loadBook();
+    }
+  }, [bookId, loadBook]);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -65,14 +66,18 @@ export default function BookView() {
     
     // Get images from JSONB field
     if (Array.isArray(book.images)) {
-      images.push(...book.images.map((img: any, index: number) => ({
-        id: img.id || index,
-        title: img.title || `Image ${index + 1}`,
-        base64: img.base64,
-        url: img.url,
-        filePath: img.filePath,
-        prompt: img.prompt
-      })));
+      images.push(...book.images.map((img, index: number) => {
+        // Type guard to ensure img is an object with the expected properties
+        const imgObj = img as Record<string, unknown>;
+        return {
+          id: (typeof imgObj.id === 'string' || typeof imgObj.id === 'number') ? imgObj.id : index,
+          title: (imgObj.title as string) || `Image ${index + 1}`,
+          base64: imgObj.base64 as string | undefined,
+          url: imgObj.url as string | undefined,
+          filePath: imgObj.filePath as string | undefined,
+          prompt: imgObj.prompt as string | undefined
+        };
+      }));
     }
     
     return images;

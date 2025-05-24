@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence, useAnimation } from "framer-motion";
 import { 
   Book as BookIcon, 
@@ -264,7 +264,7 @@ export function DynamicBook({ title, story, images, className, storyParts, chapt
     }
   };
 
-  const handleNextPage = async () => {
+  const handleNextPage = useCallback(async () => {
     if (currentPageIndex + 1 < totalPages && !isFlipping) {
       playPageTurnSound();
       setFlipDirection('forward');
@@ -279,9 +279,9 @@ export function DynamicBook({ title, story, images, className, storyParts, chapt
       setCurrentPageIndex(prev => prev + 2);
       setIsFlipping(false);
     }
-  };
+  }, [currentPageIndex, totalPages, isFlipping, flipperControls, flippingPageTransition]);
 
-  const handlePrevPage = async () => {
+  const handlePrevPage = useCallback(async () => {
     if (currentPageIndex > 0 && !isFlipping) {
       playPageTurnSound();
       setFlipDirection('backward');
@@ -299,7 +299,7 @@ export function DynamicBook({ title, story, images, className, storyParts, chapt
         setIsFlipping(false);
       });
     }
-  };
+  }, [currentPageIndex, isFlipping, flipperControls, flippingPageTransition]);
 
   // Keyboard navigation
   useEffect(() => {
