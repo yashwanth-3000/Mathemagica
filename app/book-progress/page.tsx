@@ -366,7 +366,7 @@ function BookProgressContent() {
   }, [userPrompt, router]); // Corrected dependency array
 
   const processBookStream = useCallback(async () => {
-    if (!userPrompt || hasProcessedPromptRef.current === userPrompt) return;
+    if (!userPrompt) return;
 
     // State resets are now handled in the useEffect that calls this function.
     // Ensure userPrompt is still valid (it should be, due to the calling useEffect's check)
@@ -540,11 +540,7 @@ function BookProgressContent() {
       if (!imagePromptGenComplete) setImagePromptGenInProgress(false);
       // setIsComplete(true); // Completion is now handled after image generation
     }
-  }, [userPrompt, finalImagePrompts.length, imagePromptGenComplete, storyGenComplete]); // Added missing dependencies
-
-  useEffect(() => {
-    processBookStream();
-  }, [processBookStream, userPrompt]); // Added processBookStream
+  }, [userPrompt]); // Only userPrompt as a dependency
 
   // Update isComplete to include save completion and redirect
   useEffect(() => {
