@@ -71,135 +71,6 @@ function BookProgressContent() {
   const shouldScrollToBottomRef = useRef(true); // Auto-scroll by default
   const hasProcessedPromptRef = useRef<string | null>(null); // Track processed prompts
 
-  // Auto-scroll logic using useLayoutEffect for synchronization with DOM changes
-  useEffect(() => {
-    const container = storyContainerRef.current;
-    if (!container) return;
-
-    if (shouldScrollToBottomRef.current) {
-      // Instantly scroll to the bottom
-      container.scrollTop = container.scrollHeight;
-    }
-
-    // After rendering and potential scroll, update the flag for the next time.
-    // If user has scrolled up, shouldScrollToBottomRef will become false.
-    // If user scrolls back to bottom manually, it will become true.
-    const { scrollTop, scrollHeight, clientHeight } = container;
-    // Consider a small threshold for being "at the bottom"
-    shouldScrollToBottomRef.current = scrollHeight - scrollTop - clientHeight < 20;
-
-  }, [currentStoryChunks]); // Re-evaluate on new story chunks
-
-  // Image generation function
-  const generateImages = useCallback(async () => {
-    if (finalImagePrompts.length === 0) return;
-    
-    setImageGenInProgress(true);
-    setImageGenStatus("Starting image generation...");
-    setCurrentImageIndex(0);
-    
-    for (let i = 0; i < finalImagePrompts.length; i++) {
-      const prompt = finalImagePrompts[i];
-      setCurrentImageIndex(i + 1);
-      setImageGenStatus(`Generating image ${i + 1} of ${finalImagePrompts.length}: ${prompt.title}`);
-      
-      try {
-        // Create a detailed prompt combining the description and art style
-        const detailedPrompt = `${prompt.panel_layout_description} ${prompt.panels.map(p => p.description).join(' ')} ${prompt.art_style_mood_notes}`;
-        
-        const response = await fetch("/api/test-image", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            prompt: detailedPrompt,
-            saveToFile: true,
-            filename: `comic-image-${prompt.id}.png`
-          }),
-        });
-
-        const data = await response.json();
-
-        // Handle different types of errors
-        if (!response.ok) {
-          const errorMessage = data.error || `Failed to generate image ${i + 1}`;
-          
-          // Check for 502 Bad Gateway or OpenAI service issues
-          if (response.status === 502 || errorMessage.includes("502") || errorMessage.includes("Bad gateway")) {
-            console.warn(`OpenAI service temporarily unavailable for image ${i + 1}. Using placeholder.`);
-            setImageGenStatus(`⚠️ OpenAI service temporarily down - using placeholder for image ${i + 1}`);
-            
-            // Create a placeholder image with comic book styling
-            const placeholderImage: GeneratedImage = {
-              id: prompt.id,
-              title: prompt.title,
-              imageBase64: await createPlaceholderImage(prompt.title, i + 1),
-              imageUrl: undefined,
-              savedFilePath: undefined,
-              prompt: detailedPrompt
-            };
-            
-            setGeneratedImages(prev => [...prev, placeholderImage]);
-            setImageGenStatus(`📝 Placeholder created for image ${i + 1}: ${prompt.title}`);
-            await new Promise(resolve => setTimeout(resolve, 800));
-            continue;
-          }
-          
-          throw new Error(errorMessage);
-        }
-
-        if (data.imageBase64) {
-          const generatedImage: GeneratedImage = {
-            id: prompt.id,
-            title: prompt.title,
-            imageBase64: data.imageBase64,
-            imageUrl: data.imageUrl,
-            savedFilePath: data.savedFilePath,
-            prompt: detailedPrompt
-          };
-          
-          setGeneratedImages(prev => [...prev, generatedImage]);
-          setImageGenStatus(`✅ Image ${i + 1} generated successfully: ${prompt.title}`);
-          
-          // Brief pause to show success message
-          await new Promise(resolve => setTimeout(resolve, 800));
-        } else {
-          throw new Error(`No image data returned for image ${i + 1}`);
-        }
-      } catch (error: unknown) {
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        console.error(`Error generating image ${i + 1}:`, error);
-        
-        // For any error, create a placeholder and continue
-        console.warn(`Creating placeholder for image ${i + 1} due to error: ${errorMessage}`);
-        setImageGenStatus(`⚠️ Creating placeholder for image ${i + 1} - ${errorMessage.slice(0, 50)}...`);
-        
-        try {
-          const placeholderImage: GeneratedImage = {
-            id: prompt.id,
-            title: prompt.title,
-            imageBase64: await createPlaceholderImage(prompt.title, i + 1),
-            imageUrl: undefined,
-            savedFilePath: undefined,
-            prompt: `Placeholder for: ${prompt.title}`
-          };
-          
-          setGeneratedImages(prev => [...prev, placeholderImage]);
-          setImageGenStatus(`📝 Placeholder created for image ${i + 1}: ${prompt.title}`);
-        } catch (placeholderError) {
-          console.error(`Failed to create placeholder for image ${i + 1}:`, placeholderError);
-          setImageGenStatus(`❌ Failed to create content for image ${i + 1}`);
-        }
-        
-        // Continue with next image instead of stopping
-        await new Promise(resolve => setTimeout(resolve, 1000));
-      }
-    }
-    
-    setImageGenInProgress(false);
-    setImageGenComplete(true);
-    setImageGenStatus(`🎉 Image generation complete! Generated ${generatedImages.length} images. Redirecting to your comic book...`);
-  }, [finalImagePrompts, generatedImages.length]);
-
   // Function to create a placeholder image as base64
   const createPlaceholderImage = async (title: string, imageNumber: number): Promise<string> => {
     return new Promise((resolve) => {
@@ -273,6 +144,124 @@ function BookProgressContent() {
     });
   };
 
+  // Auto-scroll logic using useLayoutEffect for synchronization with DOM changes
+  useEffect(() => {
+    const container = storyContainerRef.current;
+    if (!container) return;
+
+    if (shouldScrollToBottomRef.current) {
+      // Instantly scroll to the bottom
+      container.scrollTop = container.scrollHeight;
+    }
+
+    // After rendering and potential scroll, update the flag for the next time.
+    // If user has scrolled up, shouldScrollToBottomRef will become false.
+    // If user scrolls back to bottom manually, it will become true.
+    const { scrollTop, scrollHeight, clientHeight } = container;
+    // Consider a small threshold for being "at the bottom"
+    shouldScrollToBottomRef.current = scrollHeight - scrollTop - clientHeight < 20;
+
+  }, [currentStoryChunks]); // Re-evaluate on new story chunks
+
+  // Image generation function
+  const generateImages = useCallback(async () => {
+    if (finalImagePrompts.length === 0) return;
+    
+    setImageGenInProgress(true);
+    setImageGenStatus("Starting image generation...");
+    setCurrentImageIndex(0);
+    const newGeneratedImages: GeneratedImage[] = []; // Keep track of images generated in this run
+    
+    for (let i = 0; i < finalImagePrompts.length; i++) {
+      const imagePromptDetail = finalImagePrompts[i];
+      setCurrentImageIndex(i + 1);
+      const statusMessage = `Generating image ${i + 1} of ${finalImagePrompts.length}: ${imagePromptDetail.title}`;
+      setImageGenStatus(statusMessage);
+      
+      // Construct the detailed prompt string as /api/test-image expects
+      const detailedPrompt = `${imagePromptDetail.panel_layout_description} ${imagePromptDetail.panels.map(p => p.description).join(' ')} ${imagePromptDetail.art_style_mood_notes}`;
+
+      try {
+        const response = await fetch("/api/test-image", { // Reverted to /api/test-image
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            prompt: detailedPrompt, // Send the constructed detailed prompt
+            saveToFile: true, // Assuming this is desired, as per original /api/test-image usage
+            filename: `comic-image-${imagePromptDetail.id}.png` // Construct filename
+          }),
+        });
+
+        const data = await response.json(); // Process as direct JSON response
+
+        if (!response.ok) {
+          const errorMessage = data.error || `Failed to generate image ${i + 1}`;
+          if (response.status === 502 || errorMessage.includes("502") || errorMessage.includes("Bad gateway")) {
+            console.warn(`OpenAI service temporarily unavailable for image ${i + 1}. Using placeholder.`);
+            setImageGenStatus(`⚠️ OpenAI service temporarily down - using placeholder for image ${i + 1}`);
+            const placeholderImage: GeneratedImage = {
+              id: imagePromptDetail.id,
+              title: imagePromptDetail.title,
+              imageBase64: await createPlaceholderImage(imagePromptDetail.title, i + 1),
+              imageUrl: undefined,
+              savedFilePath: undefined,
+              prompt: detailedPrompt
+            };
+            newGeneratedImages.push(placeholderImage);
+            setGeneratedImages(prev => [...prev, placeholderImage]);
+            await new Promise(resolve => setTimeout(resolve, 800));
+            continue; // Continue to next image
+          }
+          throw new Error(errorMessage);
+        }
+
+        if (data.imageBase64) {
+          const generatedImage: GeneratedImage = {
+            id: imagePromptDetail.id,
+            title: imagePromptDetail.title,
+            imageBase64: data.imageBase64,
+            imageUrl: data.imageUrl, // If provided by /api/test-image
+            savedFilePath: data.savedFilePath, // If provided by /api/test-image
+            prompt: detailedPrompt
+          };
+          newGeneratedImages.push(generatedImage);
+          setGeneratedImages(prev => [...prev, generatedImage]);
+          setImageGenStatus(`✅ Image ${i + 1} generated successfully: ${imagePromptDetail.title}`);
+          await new Promise(resolve => setTimeout(resolve, 800)); // Brief pause for UI
+        } else {
+          throw new Error(`No image data (imageBase64) returned for image ${i + 1}`);
+        }
+
+      } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        console.error(`Error generating image ${i + 1} using /api/test-image:`, error);
+        setImageGenStatus(`⚠️ Error for image ${i + 1}. Creating placeholder.`);
+        
+        try {
+          const placeholderImage: GeneratedImage = {
+            id: imagePromptDetail.id,
+            title: imagePromptDetail.title,
+            imageBase64: await createPlaceholderImage(imagePromptDetail.title, i + 1),
+            imageUrl: undefined,
+            savedFilePath: undefined,
+            prompt: `Placeholder for: ${imagePromptDetail.title}`
+          };
+          newGeneratedImages.push(placeholderImage);
+          setGeneratedImages(prev => [...prev, placeholderImage]);
+          setImageGenStatus(`📝 Placeholder created for image ${i + 1}: ${imagePromptDetail.title}`);
+        } catch (placeholderError) {
+          console.error(`Failed to create placeholder for image ${i + 1}:`, placeholderError);
+          setImageGenStatus(`❌ Failed to create content for image ${i + 1}`);
+        }
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+    }
+    
+    setImageGenInProgress(false);
+    setImageGenComplete(true);
+    setImageGenStatus(`🎉 Image generation process complete! Processed ${finalImagePrompts.length} images.`);
+  }, [finalImagePrompts, createPlaceholderImage]);
+
   // Function to save the book to Supabase
   const saveBookToDatabase = useCallback(async () => {
     if (!finalStory || generatedImages.length === 0) {
@@ -327,7 +316,7 @@ function BookProgressContent() {
       
       return () => clearTimeout(saveTimer);
     }
-  }, [imageGenComplete, finalStory, generatedImages.length, saveInProgress, saveComplete, saveBookToDatabase]);
+  }, [imageGenComplete, finalStory, generatedImages, saveInProgress, saveComplete, saveBookToDatabase]);
 
   useEffect(() => {
     if (!userPrompt) {
@@ -336,8 +325,10 @@ function BookProgressContent() {
       return;
     }
 
-    // Prevent duplicate processing of the same prompt
+    // Prevent duplicate processing of the same prompt if already processed or in progress
     if (hasProcessedPromptRef.current === userPrompt) {
+      // If it's the same prompt and processing is ongoing or complete, don't restart.
+      // This allows the component to re-render for other state changes without re-triggering the whole flow.
       return;
     }
 
@@ -345,7 +336,7 @@ function BookProgressContent() {
     hasProcessedPromptRef.current = userPrompt;
 
     // Reset states for new prompt processing
-    setStatus("Initializing...");
+    setStatus("Initializing for new prompt...");
     setError(null);
     setCurrentStoryChunks("");
     setFinalStory(null);
@@ -353,7 +344,9 @@ function BookProgressContent() {
     setStorySummary(null);
     setStoryParts([]);
     setFinalImagePrompts([]);
+    setGeneratedImages([]);
     setIsComplete(false);
+    
     setStoryGenInProgress(false);
     setStoryGenComplete(false);
     setImagePromptGenInProgress(false);
@@ -361,143 +354,192 @@ function BookProgressContent() {
     setImageGenInProgress(false);
     setImageGenComplete(false);
     setCurrentImageIndex(0);
-    setGeneratedImages([]);
     setImageGenStatus("");
     setSaveInProgress(false);
     setSaveComplete(false);
     setSaveError(null);
     setSavedBookId(null);
+    
     shouldScrollToBottomRef.current = true; // Reset auto-scroll for new prompt
 
-    const processBookStream = async () => {
-      try {
-        setStatus(`Verifying prompt: "${userPrompt}"`);
-        // Set story generation as in progress immediately
-        setStoryGenInProgress(true);
+    processBookStream(); // Call the async function
 
-        const response = await fetch("/api/comic", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ prompt: userPrompt }),
-        });
+  }, [userPrompt, router]); // Corrected dependency array
 
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({ error: "Failed to parse error response from server" }));
-          throw new Error(errorData.error || `API request failed with status ${response.status}`);
-        }
+  const processBookStream = async () => {
+    // State resets are now handled in the useEffect that calls this function.
+    // Ensure userPrompt is still valid (it should be, due to the calling useEffect's check)
+    if (!userPrompt) {
+        setError("User prompt became invalid during processing initiation.");
+        setStatus("Error: Prompt disappeared.");
+        return;
+    }
 
-        if (!response.body) throw new Error("ReadableStream not available");
+    // 1. Story Generation
+    try {
+      setStatus(`Connecting to story generation service for: "${userPrompt}"`);
+      setStoryGenInProgress(true);
 
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-        const accumulatedStory = "";
+      const storyResponse = await fetch("/api/story", { // <<<< UPDATED API
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: userPrompt }),
+      });
 
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          
-          const rawData = decoder.decode(value);
-          const messages = rawData.split("\n\n").filter(msg => msg.startsWith("data: "));
+      if (!storyResponse.ok || !storyResponse.body) {
+        const errorData = await storyResponse.json().catch(() => ({ error: "Failed to parse error from /api/story" }));
+        throw new Error(errorData.error || `Story API request failed with status ${storyResponse.status}`);
+      }
 
-          for (const message of messages) {
-            try {
-              const jsonString = message.substring("data: ".length);
-              const eventData = JSON.parse(jsonString);
+      const reader = storyResponse.body.getReader();
+      const decoder = new TextDecoder();
+      let storyBuffer = "";
+      const tempStoryParts: typeof storyParts = [];
 
-              if (eventData.type === "status") {
-                setStatus(eventData.message);
-                if(eventData.message.includes("Generating story")) {
-                    setStoryGenInProgress(true);
-                }
-                if(eventData.message.includes("Story generation complete")) {
-                    setStoryGenInProgress(false);
-                    setStoryGenComplete(true);
-                }
-                if(eventData.message.includes("Generating image prompts as JSON")) {
-                    setImagePromptGenInProgress(true);
-                }
-                if(eventData.message.includes("Image prompts parsed. Streaming individual prompts...")) {
-                    // This status indicates the start of individual prompt streaming
-                    // We can ensure imagePromptGenInProgress is true and imagePromptGenComplete is false
-                    if(storyGenInProgress) setStoryGenInProgress(false); // story should be done
-                    if(!storyGenComplete) setStoryGenComplete(true);  // mark story complete
-                    setImagePromptGenInProgress(true);
-                    setImagePromptGenComplete(false); // Not yet complete until done event
-                }
-              } else if (eventData.type === "story_summary") {
-                if (!storyGenInProgress && !storyGenComplete) setStoryGenInProgress(true);
-                setChapterName(eventData.chapter_name);
-                setStorySummary(eventData.summary);
-                setCurrentStoryChunks(eventData.summary); // Start with summary
-              } else if (eventData.type === "story_part") {
-                // Add individual story parts as they come in
-                if (!storyGenInProgress && !storyGenComplete) setStoryGenInProgress(true);
-                setStoryParts(prev => [...prev, {
-                  part_number: eventData.part_number,
-                  chapter_title: eventData.chapter_title,
-                  story_content: eventData.story_content
-                }]);
-              } else if (eventData.type === "image_prompt_item") {
-                // New event type for individual image prompts
-                if (!imagePromptGenInProgress && !imagePromptGenComplete) {
-                     // If we missed the status update, ensure correct state
-                    if(storyGenInProgress) setStoryGenInProgress(false);
-                    if(!storyGenComplete) setStoryGenComplete(true);
-                    setImagePromptGenInProgress(true);
-                }
-                setFinalImagePrompts(prev => [...prev, eventData.item]);
-              } else if (eventData.type === "done") {
-                setStatus("Comic generation complete! Finalizing display...");
-                if(storyGenInProgress) setStoryGenInProgress(false);
-                if(!storyGenComplete) setStoryGenComplete(true);
-                if(imagePromptGenInProgress) setImagePromptGenInProgress(false);
-                setImagePromptGenComplete(true);
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        
+        storyBuffer += decoder.decode(value, { stream: true });
+        const eventLines = storyBuffer.split("\n\n");
+        storyBuffer = eventLines.pop() || ""; // Keep incomplete event line in buffer
 
-                // Create final story from story parts if available
-                let finalStoryContent = eventData.story || accumulatedStory;
-                if (storyParts.length > 0) {
-                  finalStoryContent = storyParts.map(part => 
-                    `Part ${part.part_number}: ${part.chapter_title}\n${part.story_content}`
-                  ).join('\n\n');
-                }
+        for (const line of eventLines) {
+          if (line.startsWith("data: ")) {
+            const jsonString = line.substring(6);
+            if (jsonString) {
+              try {
+                const eventData = JSON.parse(jsonString);
+                setStatus(eventData.message || "Processing story...");
                 
-                setFinalStory(finalStoryContent);
-                if (eventData.chapterName) setChapterName(eventData.chapterName);
-                if (eventData.storySummary) setStorySummary(eventData.storySummary);
-                
-                return; 
-              } else if (eventData.type === "error") {
-                throw new Error(eventData.error || "Unknown streaming error from server");
+                if (eventData.type === "status") {
+                  setCurrentStoryChunks(prev => prev + `\nStatus: ${eventData.message}`);
+                } else if (eventData.type === "story_summary") {
+                  setChapterName(eventData.chapter_name);
+                  setStorySummary(eventData.summary);
+                  setCurrentStoryChunks(prev => prev + `\n## ${eventData.chapter_name}\n\n**Summary:** ${eventData.summary}\n`);
+                } else if (eventData.type === "story_part") {
+                  tempStoryParts.push({ 
+                    part_number: eventData.part_number, 
+                    chapter_title: eventData.chapter_title, 
+                    story_content: eventData.story_content 
+                  });
+                  setStoryParts([...tempStoryParts]); // Update for UI display as parts arrive
+                  setCurrentStoryChunks(prev => prev + `\n### Part ${eventData.part_number}: ${eventData.chapter_title}\n${eventData.story_content}\n`);
+                } else if (eventData.type === "error") {
+                  throw new Error(`Story API Error: ${eventData.message}`);
+                }
+              } catch (e) {
+                console.warn("Failed to parse JSON from story stream:", jsonString, e);
+                setCurrentStoryChunks(prev => prev + `\n*Error parsing story data chunk.*`);
               }
-            } catch (parseError) {
-              console.error("Error parsing SSE message or handling event:", parseError, "Raw message:", message);
-              setError("Error processing data from server. Check console.");
-              setIsComplete(true); // Stop further processing on critical parse error
-              if(storyGenInProgress) setStoryGenInProgress(false);
-              if(imagePromptGenInProgress) setImagePromptGenInProgress(false);
-              setStoryGenComplete(true); // Mark as complete to show error in timeline
-              setImagePromptGenComplete(true);
-              return;
             }
           }
         }
-      } catch (err) {
-        console.error("Error in book processing stream:", err);
-        let errMsg = "An unexpected error occurred.";
-        if (err instanceof Error) errMsg = err.message;
-        setError(`Failed to generate comic: ${errMsg}`);
-        setStatus("Error occurred");
-        setIsComplete(true);
-        if(storyGenInProgress) setStoryGenInProgress(false);
-        if(imagePromptGenInProgress) setImagePromptGenInProgress(false);
-        setStoryGenComplete(true); // Mark as complete to show error in timeline
-        setImagePromptGenComplete(true);
       }
-    };
+      setStoryGenComplete(true);
+      setStoryGenInProgress(false);
+      setStatus("Story generation complete. Preparing for image prompt generation...");
+      const assembledStory = tempStoryParts.map(p => `Part ${p.part_number}: ${p.chapter_title}\n${p.story_content}`).join('\n\n');
+      setFinalStory(assembledStory); // Set final story from accumulated parts
+      
+      // 2. Image Prompt Generation (Chunked)
+      setImagePromptGenInProgress(true);
+      setStatus("Requesting image prompts (chunk 1 of 2)...");
+      setCurrentStoryChunks(prev => prev + "\n\nRequesting image prompts (chunk 1 of 2)...");
 
-    processBookStream();
+      const allGeneratedPrompts: ParsedImagePrompt[] = [];
+      const chunkSize = 3;
 
-  }, [userPrompt, imagePromptGenComplete, imagePromptGenInProgress, router, storyGenComplete, storyGenInProgress, storyParts]);
+      for (let i = 0; i < tempStoryParts.length; i += chunkSize) {
+        const chunk = tempStoryParts.slice(i, i + chunkSize);
+        if (chunk.length === 0) continue;
+
+        const chunkNumber = Math.floor(i / chunkSize) + 1;
+        const totalChunks = Math.ceil(tempStoryParts.length / chunkSize);
+        
+        setStatus(`Requesting image prompts (chunk ${chunkNumber} of ${totalChunks})...`);
+        setCurrentStoryChunks(prev => prev + `\nStatus (Prompts): Processing chunk ${chunkNumber}/${totalChunks} for ${chunk.length} parts.`);
+
+        const imagePromptResponse = await fetch("/api/image-prompts", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ storyPartsChunk: chunk }), // Send the current chunk
+        });
+
+        if (!imagePromptResponse.ok || !imagePromptResponse.body) {
+          const errorData = await imagePromptResponse.json().catch(() => ({ error: `Failed to parse error from /api/image-prompts for chunk ${chunkNumber}` }));
+          throw new Error(errorData.error || `Image Prompts API request failed for chunk ${chunkNumber} with status ${imagePromptResponse.status}`);
+        }
+        
+        const imagePromptReader = imagePromptResponse.body.getReader();
+        let imagePromptBuffer = "";
+
+        // eslint-disable-next-line no-constant-condition
+        while (true) {
+          const { value, done } = await imagePromptReader.read();
+          if (done) break;
+
+          imagePromptBuffer += decoder.decode(value, { stream: true });
+          const eventLines = imagePromptBuffer.split("\n\n");
+          imagePromptBuffer = eventLines.pop() || "";
+
+          for (const line of eventLines) {
+            if (line.startsWith("data: ")) {
+              const jsonString = line.substring(6);
+              if (jsonString) {
+                try {
+                  const eventData = JSON.parse(jsonString);
+                  if (eventData.type === "status") {
+                    setStatus(eventData.message || `Processing image prompts (chunk ${chunkNumber})...`);
+                    setCurrentStoryChunks(prev => prev + `\nStatus (Prompts Chunk ${chunkNumber}): ${eventData.message}`);
+                  } else if (eventData.type === "image_prompts_chunk" && eventData.prompts) {
+                    allGeneratedPrompts.push(...eventData.prompts);
+                    setFinalImagePrompts([...allGeneratedPrompts]); // Update UI incrementally
+                    setCurrentStoryChunks(prev => prev + `\n\n**Received ${eventData.prompts.length} Image Prompts from chunk ${chunkNumber}:**\n${eventData.prompts.map((p: ParsedImagePrompt) => `  - ID ${p.id}: ${p.title}`).join('\n')}`);
+                  } else if (eventData.type === "error") {
+                    throw new Error(`Image Prompts API Error (chunk ${chunkNumber}): ${eventData.message}`);
+                  }
+                } catch (e) {
+                  console.warn(`Failed to parse JSON from image-prompts stream (chunk ${chunkNumber}):`, jsonString, e);
+                  setCurrentStoryChunks(prev => prev + `\n*Error parsing image prompt data chunk ${chunkNumber}.*`);
+                }
+              }
+            }
+          }
+        }
+        setStatus(`Image prompts for chunk ${chunkNumber} of ${totalChunks} received.`);
+        setCurrentStoryChunks(prev => prev + `\nStatus (Prompts): Chunk ${chunkNumber}/${totalChunks} processed.`);
+        await new Promise(resolve => setTimeout(resolve, 200)); // Small delay between chunks
+      }
+      
+      setFinalImagePrompts([...allGeneratedPrompts]); // Ensure final state is set after loop
+      setImagePromptGenComplete(true);
+
+      // 3. Image Generation (will be triggered by useEffect on finalImagePrompts change)
+      // The generateImages function will handle this part.
+      // We just need to ensure finalImagePrompts is set.
+      if (finalImagePrompts.length === 0 && allGeneratedPrompts.length > 0) {
+           // This case should ideally not happen if image_prompts event is correctly sent
+           setFinalImagePrompts([...allGeneratedPrompts]); 
+      }
+
+
+    } catch (e: any) {
+      console.error("Error during book processing stream:", e);
+      setError(e.message || "An unknown error occurred");
+      setStatus(`Error: ${e.message || "Unknown error"}`);
+      setStoryGenInProgress(false);
+      setImagePromptGenInProgress(false);
+      setImageGenInProgress(false); // Also stop image gen if preceding steps fail
+    } finally {
+      // Ensure progress flags are correctly set if an error occurred mid-process
+      if (!storyGenComplete) setStoryGenInProgress(false);
+      if (!imagePromptGenComplete) setImagePromptGenInProgress(false);
+      // setIsComplete(true); // Completion is now handled after image generation
+    }
+  };
 
   // Update isComplete to include save completion and redirect
   useEffect(() => {

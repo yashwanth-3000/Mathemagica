@@ -1,102 +1,24 @@
-import { NextRequest, NextResponse } from "next/server";
-
-export async function POST(req: NextRequest) {
-  // This route is being refactored. 
-  // Story generation is now at /api/story
-  // Image prompt generation is now at /api/image-prompts
-  // Comic photo generation will be at /api/comic-photos
-
-  // You might want to update your frontend to call these new specific routes.
-  // Or, this route could be updated to orchestrate calls to the new routes.
-
-  return NextResponse.json(
-    {
-      message:
-        "This API endpoint has been refactored. Please use the new specific endpoints: /api/story, /api/image-prompts, and /api/comic-photos.",
-    },
-    { status: 404 } // Or a more appropriate status code like 301 Moved Permanently if you set up redirects.
-  );
-}
-
-// Keeping the OpenAI client and system prompts here for now, 
-// as they might be used if this route becomes an orchestrator.
-// However, they are duplicated in the new routes and should ideally be centralized or removed from here if not used.
-
-/*
 import OpenAI from "openai";
+import { NextRequest } from "next/server";
 
 const openai = new OpenAI({
   apiKey: process.env.GROK_API_KEY,
   baseURL: "https://api.x.ai/v1",
 });
 
-const storySystemPrompt = `You are Comic GPT, a storytelling engine that transforms any STEM concept into an exciting, easy-to-follow, 6-part comic-book-style adventure. You will generate stories in a structured JSON format that includes both chapter information and detailed story content.
-
-For each STEM topic provided, you must output a JSON response with this exact structure:
-
-{
-  "overall_chapter_name": "A catchy title for the entire comic adventure",
-  "story_summary": "A brief 3-4 line summary of the entire adventure story that captures the essence without giving away all details",
-  "parts": [
-    {
-      "part_number": 1,
-      "chapter_title": "Title for Part 1",
-      "story_content": "Detailed story content for Part 1 with comic book elements, onomatopoeia, and STEM explanations"
-    },
-    {
-      "part_number": 2, 
-      "chapter_title": "Title for Part 2",
-      "story_content": "Detailed story content for Part 2 continuing the adventure and building understanding"
-    },
-    {
-      "part_number": 3,
-      "chapter_title": "Title for Part 3", 
-      "story_content": "Detailed story content for Part 3 advancing the story and deepening knowledge"
-    },
-    {
-      "part_number": 4,
-      "chapter_title": "Title for Part 4", 
-      "story_content": "Detailed story content for Part 4 escalating the adventure and exploring concepts further"
-    },
-    {
-      "part_number": 5,
-      "chapter_title": "Title for Part 5", 
-      "story_content": "Detailed story content for Part 5 building toward the climax and reinforcing learning"
-    },
-    {
-      "part_number": 6,
-      "chapter_title": "Title for Part 6", 
-      "story_content": "Detailed story content for Part 6 providing complete resolution and final understanding"
-    }
-  ]
-}
-
-Rules for story creation:
-- Each part should have 4-6 sentences with comic book flair
-- Include onomatopoeia (BAM!, WHOOSH!, etc.) and vivid action verbs
-- Create characters that personify STEM concepts (e.g., "Captain Circuit" for electricity)
-- Build understanding step by step, linking back to previous parts
-- Embed clear definitions, analogies, or examples that teach core principles
-- End Parts 1-5 with cliffhangers or transitions, Part 6 with complete resolution
-- Keep tone fun and accessible - explain technical terms in action
-- The story_summary should be exactly 3-4 lines
-- Each chapter_title should hint at the adventure in that section
-- Develop the story arc across all 6 parts with proper pacing and character development
-
-IMPORTANT: You MUST output valid JSON only. No additional text before or after the JSON object.`;
-
-const imagePromptJsonSchema = {
+// Original base schema - we will modify this dynamically
+const baseImagePromptJsonSchema = {
   type: "object",
   properties: {
     image_prompts: {
       type: "array",
-      description: "A list containing exactly six image prompt objects.",
+      description: "A list containing image prompt objects for the provided story parts.", // Updated description
       items: {
         type: "object",
         properties: {
           id: {
             type: "integer",
-            description: "The sequential number of the image prompt, e.g., 1 for the first prompt."
+            description: "The sequential number of the image prompt, relative to the overall story (e.g., 1 for the first part, 4 for the fourth part if processing parts 4-6)."
           },
           title: {
             type: "string",
@@ -137,15 +59,14 @@ const imagePromptJsonSchema = {
         },
         required: ["id", "title", "panel_layout_description", "panels", "art_style_mood_notes"]
       },
-      minItems: 6,
-      maxItems: 6
+      // minItems and maxItems will be set dynamically
     }
   },
   required: ["image_prompts"]
 };
 
-const imagePromptSystemPrompt = `You are an expert comic book artist and writer. You will be given a 6-part story for a STEM-focused comic book.
-Your task is to generate a list of 6 detailed image prompts, one for each part of the story. 
+const getDynamicImagePromptSystemPrompt = (schemaString: string, numParts: number) => `You are an expert comic book artist and writer. You will be given ${numParts} part(s) of a story for a STEM-focused comic book.
+Your task is to generate a list of ${numParts} detailed image prompt(s), one for each provided part of the story. Each part should have its 'id' field set to its original part_number from the input story. 
 VERY IMPORTANT: You MUST ONLY output a single, valid JSON object. Do not include any text or explanation before or after the JSON object.
 
 ***ABSOLUTELY MANDATORY TEXT REQUIREMENTS - NO EXCEPTIONS:***
@@ -153,7 +74,7 @@ EVERY SINGLE IMAGE MUST CONTAIN VISIBLE TEXT ELEMENTS. THIS IS NON-NEGOTIABLE.
 
 The JSON object must conform to the following schema:
 
-${JSON.stringify(imagePromptJsonSchema, null, 2)}
+${schemaString}
 
 🔥 CRITICAL TEXT INTEGRATION REQUIREMENTS (MANDATORY - NOT OPTIONAL):
 - EVERY panel MUST contain at least 3 types of text: speech bubbles, sound effects, and caption boxes
@@ -195,4 +116,110 @@ FAILURE TO INCLUDE VISIBLE TEXT ELEMENTS IN EVERY PANEL IS UNACCEPTABLE.
 The generated images will be rejected if they do not contain clear, readable text elements.
 
 Double-check your output to ensure every single panel description explicitly mentions multiple text elements with exact content and placement instructions.`;
-*/
+
+interface StoryPart {
+  part_number: number;
+  chapter_title: string;
+  story_content: string;
+}
+
+export async function POST(req: NextRequest) {
+  try {
+    // Expect storyPartsChunk (e.g., parts 1-3 or 4-6) instead of the full storyData object
+    const { storyPartsChunk } = await req.json() as { storyPartsChunk: StoryPart[] };
+
+    if (!storyPartsChunk || !Array.isArray(storyPartsChunk) || storyPartsChunk.length === 0) {
+      return new Response(JSON.stringify({ error: "Story parts chunk is required and must be a non-empty array." }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    const numParts = storyPartsChunk.length;
+
+    // Dynamically create the schema string for the AI
+    const dynamicSchema = { 
+      ...baseImagePromptJsonSchema,
+      properties: {
+        ...baseImagePromptJsonSchema.properties,
+        image_prompts: {
+          ...baseImagePromptJsonSchema.properties.image_prompts,
+          minItems: numParts, // Set dynamically
+          maxItems: numParts, // Set dynamically
+          description: `A list containing exactly ${numParts} image prompt object(s), one for each provided story part.`
+        }
+      }
+    };
+    const schemaString = JSON.stringify(dynamicSchema, null, 2);
+    const systemPrompt = getDynamicImagePromptSystemPrompt(schemaString, numParts);
+
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream({
+      async start(controller) {
+        const sendEvent = (data: Record<string, unknown>) => {
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
+        };
+
+        try {
+          sendEvent({ type: "status", message: `Connecting to Grok for image prompt generation (${numParts} parts)...` });
+
+          const imagePromptResponse = await openai.chat.completions.create({
+            model: "grok-3-fast", 
+            messages: [
+              { role: "system", content: systemPrompt },
+              {
+                role: "user",
+                // Provide only the chunk of story parts to the AI
+                content: `Here are ${numParts} story part(s). Please generate image prompts based on these, ensuring each prompt's 'id' matches the original 'part_number':\n\n${JSON.stringify(storyPartsChunk, null, 2)}`,
+              },
+            ],
+            stream: false,
+            response_format: { type: "json_object" }, 
+          });
+
+          sendEvent({ type: "status", message: "Parsing image prompt response..." });
+
+          const imagePromptContent = imagePromptResponse.choices[0]?.message?.content;
+          if (!imagePromptContent) {
+            throw new Error("No image prompt content was generated.");
+          }
+
+          let parsedImagePrompts: any;
+          try {
+            parsedImagePrompts = JSON.parse(imagePromptContent);
+          } catch (e) {
+            console.error("Failed to parse image prompt JSON:", imagePromptContent.substring(0,500));
+            throw new Error("Failed to parse image prompt JSON response: " + imagePromptContent.substring(0, 200));
+          }
+          
+          if (!parsedImagePrompts.image_prompts || !Array.isArray(parsedImagePrompts.image_prompts) || parsedImagePrompts.image_prompts.length !== numParts) {
+             throw new Error(`Image prompt response missing required fields or incorrect structure. Expected ${numParts} prompts, got ${parsedImagePrompts.image_prompts?.length}.`);
+          }
+
+          // Send the generated prompts for the current chunk
+          sendEvent({ type: "image_prompts_chunk", prompts: parsedImagePrompts.image_prompts });
+          sendEvent({ type: "status", message: `Image prompts for ${numParts} parts generated successfully.` });
+          controller.close();
+        } catch (error: any) {
+          console.error("Error in image prompt generation stream:", error);
+          sendEvent({ type: "error", message: error.message });
+          controller.close();
+        }
+      },
+    });
+
+    return new Response(stream, {
+      headers: {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        Connection: "keep-alive",
+      },
+    });
+  } catch (error: any) {
+    console.error("Error in POST /api/image-prompts:", error);
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+} 
