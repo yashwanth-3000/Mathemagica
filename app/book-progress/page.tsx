@@ -72,7 +72,7 @@ function BookProgressContent() {
   const hasProcessedPromptRef = useRef<string | null>(null); // Track processed prompts
 
   // Function to create a placeholder image as base64
-  const createPlaceholderImage = async (title: string, imageNumber: number): Promise<string> => {
+  const createPlaceholderImage = useCallback(async (title: string, imageNumber: number): Promise<string> => {
     return new Promise((resolve) => {
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
@@ -142,7 +142,7 @@ function BookProgressContent() {
       const base64 = canvas.toDataURL('image/png').split(',')[1];
       resolve(base64);
     });
-  };
+  }, []);
 
   // Auto-scroll logic using useLayoutEffect for synchronization with DOM changes
   useEffect(() => {
@@ -195,8 +195,8 @@ function BookProgressContent() {
         const data = await response.json(); // Process as direct JSON response
 
         if (!response.ok) {
-          const errorMessage = data.error || `Failed to generate image ${i + 1}`;
-          if (response.status === 502 || errorMessage.includes("502") || errorMessage.includes("Bad gateway")) {
+          const _errorMessage = data.error || `Failed to generate image ${i + 1}`; // Prefixed with _
+          if (response.status === 502 || (data.error && (data.error.includes("502") || data.error.includes("Bad gateway")))) {
             console.warn(`OpenAI service temporarily unavailable for image ${i + 1}. Using placeholder.`);
             setImageGenStatus(`⚠️ OpenAI service temporarily down - using placeholder for image ${i + 1}`);
             const placeholderImage: GeneratedImage = {
@@ -212,7 +212,7 @@ function BookProgressContent() {
             await new Promise(resolve => setTimeout(resolve, 800));
             continue; // Continue to next image
           }
-          throw new Error(errorMessage);
+          throw new Error(_errorMessage);
         }
 
         if (data.imageBase64) {
@@ -233,7 +233,6 @@ function BookProgressContent() {
         }
 
       } catch (error: unknown) {
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
         console.error(`Error generating image ${i + 1} using /api/test-image:`, error);
         setImageGenStatus(`⚠️ Error for image ${i + 1}. Creating placeholder.`);
         
@@ -366,7 +365,9 @@ function BookProgressContent() {
 
   }, [userPrompt, router]); // Corrected dependency array
 
-  const processBookStream = async () => {
+  const processBookStream = useCallback(async () => {
+    if (!userPrompt || hasProcessedPromptRef.current === userPrompt) return;
+
     // State resets are now handled in the useEffect that calls this function.
     // Ensure userPrompt is still valid (it should be, due to the calling useEffect's check)
     if (!userPrompt) {
@@ -526,10 +527,10 @@ function BookProgressContent() {
       }
 
 
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error("Error during book processing stream:", e);
-      setError(e.message || "An unknown error occurred");
-      setStatus(`Error: ${e.message || "Unknown error"}`);
+      setError((e instanceof Error) ? e.message : "An unknown error occurred");
+      setStatus(`Error: ${(e instanceof Error) ? e.message : "Unknown error"}`);
       setStoryGenInProgress(false);
       setImagePromptGenInProgress(false);
       setImageGenInProgress(false); // Also stop image gen if preceding steps fail
@@ -539,7 +540,11 @@ function BookProgressContent() {
       if (!imagePromptGenComplete) setImagePromptGenInProgress(false);
       // setIsComplete(true); // Completion is now handled after image generation
     }
-  };
+  }, [userPrompt, finalImagePrompts.length, imagePromptGenComplete, storyGenComplete]); // Added missing dependencies
+
+  useEffect(() => {
+    processBookStream();
+  }, [processBookStream, userPrompt]); // Added processBookStream
 
   // Update isComplete to include save completion and redirect
   useEffect(() => {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useEffect, useCallback } from "react";
+import { useRef, useState, useEffect, useCallback, useMemo } from "react";
 import { motion, AnimatePresence, useAnimation } from "framer-motion";
 import { 
   Book as BookIcon, 
@@ -163,10 +163,10 @@ export function Book() {
   const totalPages = mathComicData.length;
   const animationDuration = 1.2; // seconds
 
-  const flippingPageTransition = {
+  const flippingPageTransition = useMemo(() => ({
     duration: animationDuration,
     ease: [0.33, 1, 0.68, 1], 
-  };
+  }), [animationDuration]);
 
   const playPageTurnSound = () => {
     if (pageTurnSoundRef.current) {

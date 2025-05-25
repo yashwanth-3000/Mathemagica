@@ -184,10 +184,10 @@ export async function POST(req: NextRequest) {
             throw new Error("No image prompt content was generated.");
           }
 
-          let parsedImagePrompts: any;
+          let parsedImagePrompts: { image_prompts: Array<unknown> };
           try {
             parsedImagePrompts = JSON.parse(imagePromptContent);
-          } catch (e) {
+          } catch {
             console.error("Failed to parse image prompt JSON:", imagePromptContent.substring(0,500));
             throw new Error("Failed to parse image prompt JSON response: " + imagePromptContent.substring(0, 200));
           }
@@ -200,9 +200,9 @@ export async function POST(req: NextRequest) {
           sendEvent({ type: "image_prompts_chunk", prompts: parsedImagePrompts.image_prompts });
           sendEvent({ type: "status", message: `Image prompts for ${numParts} parts generated successfully.` });
           controller.close();
-        } catch (error: any) {
+        } catch (error: unknown) {
           console.error("Error in image prompt generation stream:", error);
-          sendEvent({ type: "error", message: error.message });
+          sendEvent({ type: "error", message: (error instanceof Error) ? error.message : String(error) });
           controller.close();
         }
       },
@@ -215,9 +215,9 @@ export async function POST(req: NextRequest) {
         Connection: "keep-alive",
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error in POST /api/image-prompts:", error);
-    return new Response(JSON.stringify({ error: error.message }), {
+    return new Response(JSON.stringify({ error: (error instanceof Error) ? error.message : String(error) }), {
       status: 500,
       headers: { "Content-Type": "application/json" },
     });

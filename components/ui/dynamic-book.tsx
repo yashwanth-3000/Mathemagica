@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useEffect, useCallback } from "react";
+import { useRef, useState, useEffect, useCallback, useMemo } from "react";
 import { motion, AnimatePresence, useAnimation } from "framer-motion";
 import { 
   Book as BookIcon, 
@@ -178,6 +178,11 @@ export function DynamicBook({ title, story, images, className, storyParts, chapt
   const flipperControls = useAnimation();
   const animationDuration = 1.2; // seconds
 
+  const flippingPageTransition = useMemo(() => ({
+    duration: animationDuration,
+    ease: [0.33, 1, 0.68, 1], 
+  }), [animationDuration]);
+
   // Convert story and images into book pages
   const createBookPages = (): BookPageContent[] => {
     const pages: BookPageContent[] = [];
@@ -255,11 +260,6 @@ export function DynamicBook({ title, story, images, className, storyParts, chapt
 
   const bookPages = createBookPages();
   const totalPages = bookPages.length;
-
-  const flippingPageTransition = {
-    duration: animationDuration,
-    ease: [0.33, 1, 0.68, 1], 
-  };
 
   const playPageTurnSound = () => {
     if (pageTurnSoundRef.current) {

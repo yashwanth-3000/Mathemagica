@@ -112,7 +112,7 @@ export async function POST(req: NextRequest) {
           };
           try {
             parsedStoryData = JSON.parse(storyContent);
-          } catch (e) {
+          } catch {
             console.error("Failed to parse story JSON:", storyContent.substring(0,500));
             throw new Error("Failed to parse story JSON response: " + storyContent.substring(0, 200));
           }
@@ -145,9 +145,9 @@ export async function POST(req: NextRequest) {
           }
           sendEvent({ type: "status", message: "Story generation complete." });
           controller.close();
-        } catch (error: any) {
+        } catch (error: unknown) {
           console.error("Error in story generation stream:", error);
-          sendEvent({ type: "error", message: error.message });
+          sendEvent({ type: "error", message: (error instanceof Error) ? error.message : String(error) });
           controller.close();
         }
       },
@@ -160,9 +160,9 @@ export async function POST(req: NextRequest) {
         Connection: "keep-alive",
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error in POST /api/story:", error);
-    return new Response(JSON.stringify({ error: error.message }), {
+    return new Response(JSON.stringify({ error: (error instanceof Error) ? error.message : String(error) }), {
       status: 500,
       headers: { "Content-Type": "application/json" },
     });

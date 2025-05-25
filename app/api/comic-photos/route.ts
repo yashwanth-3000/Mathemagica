@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 
 // Placeholder for actual image generation service client
 // import { ImageGenerator } from "@/lib/image-generator"; 
@@ -38,9 +38,9 @@ export async function POST(req: NextRequest) {
           sendEvent({ type: "comic_photo", imageUrl: mockImageUrl, promptDetails: imagePromptDetails });
           
           controller.close();
-        } catch (error: any) {
+        } catch (error: unknown) {
           console.error("Error in comic photo generation stream:", error);
-          sendEvent({ type: "error", message: error.message });
+          sendEvent({ type: "error", message: (error instanceof Error) ? error.message : String(error) });
           controller.close();
         }
       },
@@ -53,9 +53,9 @@ export async function POST(req: NextRequest) {
         Connection: "keep-alive",
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error in POST /api/comic-photos:", error);
-    return new Response(JSON.stringify({ error: error.message }), {
+    return new Response(JSON.stringify({ error: (error instanceof Error) ? error.message : String(error) }), {
       status: 500,
       headers: { "Content-Type": "application/json" },
     });
