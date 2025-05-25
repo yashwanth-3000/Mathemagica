@@ -737,7 +737,7 @@ function BookProgressContent() {
             {/* Display for individually streamed image prompts during generation phase */}
             {finalImagePrompts.length > 0 && !imagePromptGenComplete && (
                 <div className="space-y-4 mt-4">
-                    <p className="text-sm text-sky-300 italic font-bold">Received {finalImagePrompts.length} / 3 image prompts...</p>
+                    <p className="text-sm text-sky-300 italic font-bold">Received {finalImagePrompts.length} / 6 image prompts...</p>
                     {finalImagePrompts.map((prompt, index) => (
                         <div key={`streaming-${prompt.id}-${index}`} className="p-4 border-2 border-sky-600/50 rounded-lg bg-slate-800/60 shadow-lg hover:border-sky-500/70 transition-colors duration-300">
                             <h4 className="text-md font-black text-sky-400 mb-2 font-sans">Image {prompt.id}: {prompt.title}</h4>

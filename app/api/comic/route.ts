@@ -6,7 +6,7 @@ const openai = new OpenAI({
   baseURL: "https://api.x.ai/v1",
 });
 
-const storySystemPrompt = `You are Comic GPT, a storytelling engine that transforms any STEM concept into an exciting, easy-to-follow, 3-part comic-book-style adventure. You will generate stories in a structured JSON format that includes both chapter information and detailed story content.
+const storySystemPrompt = `You are Comic GPT, a storytelling engine that transforms any STEM concept into an exciting, easy-to-follow, 6-part comic-book-style adventure. You will generate stories in a structured JSON format that includes both chapter information and detailed story content.
 
 For each STEM topic provided, you must output a JSON response with this exact structure:
 
@@ -27,7 +27,22 @@ For each STEM topic provided, you must output a JSON response with this exact st
     {
       "part_number": 3,
       "chapter_title": "Title for Part 3", 
-      "story_content": "Detailed story content for Part 3 providing resolution and completing the learning"
+      "story_content": "Detailed story content for Part 3 advancing the story and deepening knowledge"
+    },
+    {
+      "part_number": 4,
+      "chapter_title": "Title for Part 4", 
+      "story_content": "Detailed story content for Part 4 escalating the adventure and exploring concepts further"
+    },
+    {
+      "part_number": 5,
+      "chapter_title": "Title for Part 5", 
+      "story_content": "Detailed story content for Part 5 building toward the climax and reinforcing learning"
+    },
+    {
+      "part_number": 6,
+      "chapter_title": "Title for Part 6", 
+      "story_content": "Detailed story content for Part 6 providing complete resolution and final understanding"
     }
   ]
 }
@@ -38,10 +53,11 @@ Rules for story creation:
 - Create characters that personify STEM concepts (e.g., "Captain Circuit" for electricity)
 - Build understanding step by step, linking back to previous parts
 - Embed clear definitions, analogies, or examples that teach core principles
-- End Parts 1 & 2 with cliffhangers, Part 3 with resolution
+- End Parts 1-5 with cliffhangers or transitions, Part 6 with complete resolution
 - Keep tone fun and accessible - explain technical terms in action
 - The story_summary should be exactly 3-4 lines
 - Each chapter_title should hint at the adventure in that section
+- Develop the story arc across all 6 parts with proper pacing and character development
 
 IMPORTANT: You MUST output valid JSON only. No additional text before or after the JSON object.`;
 
@@ -50,7 +66,7 @@ const imagePromptJsonSchema = {
   properties: {
     image_prompts: {
       type: "array",
-      description: "A list containing exactly three image prompt objects.",
+      description: "A list containing exactly six image prompt objects.",
       items: {
         type: "object",
         properties: {
@@ -97,15 +113,15 @@ const imagePromptJsonSchema = {
         },
         required: ["id", "title", "panel_layout_description", "panels", "art_style_mood_notes"]
       },
-      minItems: 3,
-      maxItems: 3
+      minItems: 6,
+      maxItems: 6
     }
   },
   required: ["image_prompts"]
 };
 
-const imagePromptSystemPrompt = `You are an expert comic book artist and writer. You will be given a 3-part story for a STEM-focused comic book.
-Your task is to generate a list of 3 detailed image prompts, one for each part of the story. 
+const imagePromptSystemPrompt = `You are an expert comic book artist and writer. You will be given a 6-part story for a STEM-focused comic book.
+Your task is to generate a list of 6 detailed image prompts, one for each part of the story. 
 VERY IMPORTANT: You MUST ONLY output a single, valid JSON object. Do not include any text or explanation before or after the JSON object.
 
 ***ABSOLUTELY MANDATORY TEXT REQUIREMENTS - NO EXCEPTIONS:***

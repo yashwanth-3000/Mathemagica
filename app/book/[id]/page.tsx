@@ -6,6 +6,7 @@ import { getBook, getBookImages } from "../../../lib/database";
 import { Book, BookImage } from "../../../lib/supabase";
 import { ArrowLeft, Calendar, Image as ImageIcon } from "lucide-react";
 import { DynamicBook } from "../../../components/ui/dynamic-book";
+import { Navbar } from "../../../components/navbar";
 
 export default function BookView() {
   const router = useRouter();
@@ -123,9 +124,9 @@ export default function BookView() {
         const startIndex = paragraphs.length > 3 ? 1 : 0;
         const contentParagraphs = paragraphs.slice(startIndex);
         
-        // Group paragraphs into 3 parts
-        const partSize = Math.ceil(contentParagraphs.length / 3);
-        for (let i = 0; i < 3; i++) {
+        // Group paragraphs into 6 parts
+        const partSize = Math.ceil(contentParagraphs.length / 6);
+        for (let i = 0; i < 6; i++) {
           const partContent = contentParagraphs
             .slice(i * partSize, (i + 1) * partSize)
             .join('\n\n');
@@ -149,10 +150,18 @@ export default function BookView() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-stone-100 via-amber-50 to-orange-100 dark:from-stone-900 dark:via-stone-800 dark:to-amber-900 flex items-center justify-center">
+      <div 
+        className="min-h-screen flex items-center justify-center"
+        style={{
+          backgroundImage: "url('/comic_background.png')",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          backgroundRepeat: "no-repeat"
+        }}
+      >
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-500 mx-auto mb-4"></div>
-          <p className="text-stone-700 dark:text-stone-300">Loading your book...</p>
+          <p className="text-white bg-black/50 px-4 py-2 rounded-lg font-bold">Loading your book...</p>
         </div>
       </div>
     );
@@ -160,14 +169,22 @@ export default function BookView() {
 
   if (error || !book) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-stone-100 via-amber-50 to-orange-100 dark:from-stone-900 dark:via-stone-800 dark:to-amber-900 flex items-center justify-center">
+      <div 
+        className="min-h-screen flex items-center justify-center"
+        style={{
+          backgroundImage: "url('/comic_background.png')",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          backgroundRepeat: "no-repeat"
+        }}
+      >
         <div className="text-center">
-          <p className="text-red-600 dark:text-red-400 text-lg mb-4">
+          <p className="text-red-400 text-lg mb-4 bg-black/50 px-4 py-2 rounded-lg font-bold">
             {error || "Book not found"}
           </p>
           <button 
             onClick={() => router.push('/library')}
-            className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg transition-colors"
+            className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg transition-colors font-bold"
           >
             Back to Library
           </button>
@@ -199,32 +216,48 @@ export default function BookView() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-stone-100 via-amber-50 to-orange-100 dark:from-stone-900 dark:via-stone-800 dark:to-amber-900">
-      <div className="container mx-auto px-4 py-8">
+    <div 
+      className="min-h-screen relative"
+      style={{
+        backgroundImage: "url('/comic_background.png')",
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundRepeat: "no-repeat"
+      }}
+    >
+      <Navbar />
+      
+      {/* Decorative floating elements */}
+      <div className="absolute top-10 left-[5%] w-40 h-40 bg-amber-500/10 rounded-full blur-3xl animate-pulse-slow" />
+      <div className="absolute top-[30%] right-[5%] w-60 h-60 bg-sky-500/10 rounded-full blur-3xl animate-float" style={{ animationDelay: "1s" }} />
+      <div className="absolute top-[60%] left-[10%] w-32 h-32 bg-rose-500/10 rounded-full blur-3xl animate-pulse-slow" style={{ animationDelay: "2s" }} />
+      <div className="absolute bottom-[20%] right-[15%] w-24 h-24 bg-purple-500/10 rounded-full blur-2xl animate-float" style={{ animationDelay: "3s" }} />
+
+      <div className="container mx-auto px-4 py-8 pt-24 relative z-10">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <button
             onClick={() => router.push('/library')}
-            className="flex items-center space-x-2 px-4 py-2 bg-stone-200 dark:bg-stone-700 hover:bg-stone-300 dark:hover:bg-stone-600 text-stone-800 dark:text-stone-200 rounded-lg transition-colors"
+            className="flex items-center space-x-2 px-4 py-2 bg-white/80 hover:bg-white/90 text-black rounded-lg transition-colors font-bold border-2 border-black shadow-lg"
           >
             <ArrowLeft className="w-4 h-4" />
             <span>Back to Library</span>
           </button>
           
-          <div className="flex items-center space-x-4 text-sm text-stone-600 dark:text-stone-400">
-            <div className="flex items-center space-x-1">
+          <div className="flex items-center space-x-4 text-sm bg-white/80 px-4 py-2 rounded-lg border-2 border-black shadow-lg">
+            <div className="flex items-center space-x-1 text-black font-bold">
               <Calendar className="w-4 h-4" />
               <span>{book.created_at ? formatDate(book.created_at) : 'Unknown date'}</span>
             </div>
-            <div className="flex items-center space-x-1">
+            <div className="flex items-center space-x-1 text-black font-bold">
               <ImageIcon className="w-4 h-4" />
               <span>{unifiedImages.length} images</span>
             </div>
-            <span className={`px-2 py-1 text-xs rounded-full ${
-              book.status === 'completed' ? 'bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-400' :
-              book.status === 'in_progress' ? 'bg-yellow-100 dark:bg-yellow-900/50 text-yellow-700 dark:text-yellow-400' :
-              book.status === 'published' ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-400' :
-              'bg-gray-100 dark:bg-gray-900/50 text-gray-700 dark:text-gray-400'
+            <span className={`px-2 py-1 text-xs rounded-full font-bold border-2 border-black ${
+              book.status === 'completed' ? 'bg-green-300 text-green-800' :
+              book.status === 'in_progress' ? 'bg-yellow-300 text-yellow-800' :
+              book.status === 'published' ? 'bg-blue-300 text-blue-800' :
+              'bg-gray-300 text-gray-800'
             }`}>
               {book.status || 'draft'}
             </span>
